@@ -17,8 +17,9 @@ is there for one or two shapes, named above its lines in `expected.txt`:
 - two CTEs naming a CTE of their own alike.
 
 The files:
-- **`project.json`** is the graph: each source with its columns, and each model
-  with its materialisation, its parents and the columns its table has.
+- **`project.json`** is the graph: the dialect, each source with its table and
+  columns, and each model with its table, materialisation, parents and the
+  columns its table has. An ephemeral model has no table.
 - **`models/<name>.sql`** is each model's SQL as dbt compiles it: relations
   fully qualified, and an ephemeral model inlined as `__dbt__cte__<name>`
   where it is read.
@@ -77,8 +78,9 @@ and a model reading it is drawn from what it reads.
   miss or to add, in its own repository.
 - **`check.py` checks that the files agree with each other**: every line names
   a model, a parent and columns the graph has, every column of every model has
-  a line, and a column is not both a root and fed. It cannot check the lineage
-  itself; that is the reader's job.
+  a line, a column is not both a root and fed, and the SQL reads no table but
+  its parents' and its own. It cannot check the lineage itself; that is the
+  reader's job.
 
 ```
 python3 check.py

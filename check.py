@@ -4,7 +4,8 @@ usage: python3 check.py
 
 It reads every directory holding a project.json. It cannot tell whether the
 lineage is right, only that every line of expected.txt names what the graph
-has, and that every column of every model has a line.
+has, that every column of every model has a line, and that the SQL reads no
+table but its parents' and its own.
 """
 import json
 import re
@@ -13,6 +14,8 @@ from pathlib import Path
 
 KINDS = {"passthrough", "rename", "cast", "transform", "hash", "aggregate", "window"}
 ROLES = {"join_key", "dedup_key", "filter"}
+# A table as compiled SQL names it: three parts, fully qualified.
+TABLE = re.compile(r"\b([A-Za-z_]+\.[A-Za-z_]+\.[A-Za-z_]+)\b")
 EDGE = re.compile(r"^(\w+)\.(\w+) <- ((?:raw\.)?\w+)\.(\w+) (\w+)$")
 ROOT = re.compile(r"^(\w+)\.(\w+) root$")
 READ = re.compile(r"^(\w+) reads ((?:raw\.)?\w+)\.(\w+) (\w+)$")
@@ -21,9 +24,16 @@ READ = re.compile(r"^(\w+) reads ((?:raw\.)?\w+)\.(\w+) (\w+)$")
 def check(project: Path) -> list[str]:
     faults = []
     spec = json.loads((project / "project.json").read_text())
-    sources = {name: set(cols) for name, cols in spec["sources"].items()}
+    if not spec.get("adapter"):
+        faults.append("project.json: no adapter")
+    sources = {name: set(s["columns"]) for name, s in spec["sources"].items()}
     models = spec["models"]
     columns = {**sources, **{name: set(m["columns"]) for name, m in models.items()}}
+    relation = {name: s["relation"] for name, s in spec["sources"].items()}
+    relation.update({name: m["relation"] for name, m in models.items()})
+    for name, m in models.items():
+        if (m["relation"] is None) != (m["materialized"] == "ephemeral"):
+            faults.append(f"{name}: a relation exactly when it is not ephemeral")
 
     files = {p.stem for p in (project / "models").glob("*.sql")}
     for name in sorted(set(models) - files):
@@ -47,6 +57,14 @@ def check(project: Path) -> list[str]:
             if p in models and models[p]["materialized"] == "ephemeral":
                 stack.extend(models[p]["parents"])
         return out
+
+    # The SQL names its parents' tables, and its own when incremental. An
+    # ephemeral parent is inlined, so what it reads is named instead.
+    for name in sorted(set(models) & files):
+        sql = (project / "models" / f"{name}.sql").read_text()
+        allowed = {relation[p] for p in reachable(name) if relation.get(p)} | {relation[name]}
+        for table in sorted({t.upper() for t in TABLE.findall(sql)} - {str(r).upper() for r in allowed}):
+            faults.append(f"models/{name}.sql: reads {table}, not a parent's table")
 
     fed, roots, seen = set(), set(), set()
     for number, raw in enumerate((project / "expected.txt").read_text().splitlines(), 1):
