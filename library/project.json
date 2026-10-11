@@ -1,0 +1,71 @@
+{
+  "sources": {
+    "raw.books": ["book_id", "title", "author_first", "author_last", "isbn", "published_on", "genre_code", "tags"],
+    "raw.members": ["member_id", "given_name", "family_name", "email", "joined_at", "branch_code", "deleted"],
+    "raw.loans": ["loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "due_on", "returned_at", "status"],
+    "raw.fines": ["fine_id", "loan_id", "amount_cents", "assessed_at", "waived"],
+    "raw.reviews": ["review_id", "book_id", "member_id", "stars", "written_at"]
+  },
+  "models": {
+    "books": {
+      "materialized": "view",
+      "parents": ["raw.books"],
+      "columns": ["book_id", "title", "author", "published_on", "genre_code", "isbn13", "tags", "shelf_version", "shelved_at"]
+    },
+    "members": {
+      "materialized": "table",
+      "parents": ["raw.members"],
+      "columns": ["member_id", "email", "joined_at", "branch_code", "display_name", "email_key"]
+    },
+    "loans_enriched": {
+      "materialized": "table",
+      "parents": ["raw.loans", "members"],
+      "columns": ["loan_id", "book_id", "member_id", "borrower", "branch_code", "borrowed_at", "loan_state", "days_out"]
+    },
+    "book_tags": {
+      "materialized": "table",
+      "parents": ["books"],
+      "columns": ["book_id", "tag", "tag_position"]
+    },
+    "fines_clean": {
+      "materialized": "view",
+      "parents": ["raw.fines"],
+      "columns": ["fine_id", "loan_id", "amount", "amount_due", "fine_fingerprint", "assessed_on"]
+    },
+    "member_fines": {
+      "materialized": "ephemeral",
+      "parents": ["fines_clean", "loans_enriched"],
+      "columns": ["member_id", "fine_count", "total_due", "last_assessed_on"]
+    },
+    "member_summary": {
+      "materialized": "table",
+      "parents": ["members", "member_fines"],
+      "columns": ["member_id", "email", "joined_at", "branch_code", "display_name", "email_key", "fine_count", "total_due", "last_assessed_on", "member_checksum"]
+    },
+    "loan_ranks": {
+      "materialized": "table",
+      "parents": ["loans_enriched", "books"],
+      "columns": ["loan_id", "member_id", "genre_code", "recency_in_genre", "age_rank_for_member"]
+    },
+    "reading_lists": {
+      "materialized": "table",
+      "parents": ["raw.reviews", "books"],
+      "columns": ["member_id", "titles_in_order", "mean_stars"]
+    },
+    "branch_activity": {
+      "materialized": "table",
+      "parents": ["loans_enriched", "members"],
+      "columns": ["branch_code", "branch_name", "activity", "happened_at"]
+    },
+    "loan_history": {
+      "materialized": "incremental",
+      "parents": ["loans_enriched"],
+      "columns": ["loan_id", "member_id", "loan_state", "days_out", "borrowed_at"]
+    },
+    "twin_scopes": {
+      "materialized": "view",
+      "parents": ["books", "raw.reviews"],
+      "columns": ["book_id", "title", "best_stars"]
+    }
+  }
+}

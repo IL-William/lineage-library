@@ -1,0 +1,20 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+# Nothing here writes anything back.
+permissions:
+  contents: read
+
+# Third-party actions are pinned to a commit, not a tag: a tag can be moved to
+# point at new code. Dependabot bumps these pins with the version comment.
+jobs:
+  files:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: python3 -I check.py

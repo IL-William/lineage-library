@@ -1,0 +1,142 @@
+# The lineage of models/, written by hand from the SQL. Never generated from a
+# tool's output: when a tool and this file disagree, read the SQL again. The
+# lines and their words are defined in the README.
+#
+#   model.column <- parent.column kind
+#   model.column root
+#   model reads parent.column role
+
+# books: renames, a cast, an expression, a literal, a function of nothing
+books.book_id <- raw.books.book_id passthrough
+books.title <- raw.books.title passthrough
+books.author <- raw.books.author_first transform
+books.author <- raw.books.author_last transform
+books.published_on <- raw.books.published_on cast
+books.genre_code <- raw.books.genre_code transform
+books.isbn13 <- raw.books.isbn rename
+books.tags <- raw.books.tags passthrough
+books.shelf_version root
+books.shelved_at root
+
+# members: a star less three columns, and a filter
+members.member_id <- raw.members.member_id passthrough
+members.email <- raw.members.email passthrough
+members.joined_at <- raw.members.joined_at passthrough
+members.branch_code <- raw.members.branch_code passthrough
+members.display_name <- raw.members.given_name transform
+members.display_name <- raw.members.family_name transform
+members.email_key <- raw.members.email transform
+members reads raw.members.deleted filter
+
+# loans_enriched: a chain of CTEs, a join, a CASE, a COALESCE across the join
+loans_enriched.loan_id <- raw.loans.loan_id passthrough
+loans_enriched.book_id <- raw.loans.book_id passthrough
+loans_enriched.member_id <- raw.loans.member_id passthrough
+loans_enriched.borrower <- members.display_name rename
+loans_enriched.branch_code <- raw.loans.branch_code transform
+loans_enriched.branch_code <- members.branch_code transform
+loans_enriched.borrowed_at <- raw.loans.borrowed_at passthrough
+loans_enriched.loan_state <- raw.loans.returned_at transform
+loans_enriched.loan_state <- raw.loans.due_on transform
+loans_enriched.days_out <- raw.loans.borrowed_at transform
+loans_enriched.days_out <- raw.loans.returned_at transform
+loans_enriched reads raw.loans.member_id join_key
+loans_enriched reads members.member_id join_key
+loans_enriched reads raw.loans.status filter
+
+# book_tags: a LATERAL FLATTEN, its value taken from the array, its index a
+# position
+book_tags.book_id <- books.book_id passthrough
+book_tags.tag <- books.tags transform
+book_tags.tag_position root
+
+# fines_clean: a lateral alias, a hash, a cast under a new name
+fines_clean.fine_id <- raw.fines.fine_id passthrough
+fines_clean.loan_id <- raw.fines.loan_id passthrough
+fines_clean.amount <- raw.fines.amount_cents transform
+fines_clean.amount_due <- raw.fines.waived transform
+fines_clean.amount_due <- raw.fines.amount_cents transform
+fines_clean.fine_fingerprint <- raw.fines.fine_id hash
+fines_clean.fine_fingerprint <- raw.fines.loan_id hash
+fines_clean.assessed_on <- raw.fines.assessed_at cast
+
+# member_fines: ephemeral, so it has no table but has columns; a model reading
+# it is drawn from what it reads
+member_fines.member_id <- loans_enriched.member_id passthrough
+member_fines.fine_count root
+member_fines.total_due <- fines_clean.amount_due aggregate
+member_fines.last_assessed_on <- fines_clean.assessed_on aggregate
+member_fines reads fines_clean.loan_id join_key
+member_fines reads loans_enriched.loan_id join_key
+member_fines reads fines_clean.amount_due filter
+
+# member_summary: an ephemeral model inlined as a CTE, a star over a CTE, an
+# aggregate under a COALESCE, a count of rows, a hash
+member_summary.member_id <- members.member_id passthrough
+member_summary.email <- members.email passthrough
+member_summary.joined_at <- members.joined_at passthrough
+member_summary.branch_code <- members.branch_code passthrough
+member_summary.display_name <- members.display_name passthrough
+member_summary.email_key <- members.email_key passthrough
+member_summary.fine_count root
+member_summary.total_due <- fines_clean.amount_due aggregate
+member_summary.last_assessed_on <- fines_clean.assessed_on aggregate
+member_summary.member_checksum <- members.member_id hash
+member_summary.member_checksum <- members.email hash
+member_summary reads members.member_id join_key
+member_summary reads loans_enriched.member_id join_key
+member_summary reads fines_clean.loan_id join_key
+member_summary reads loans_enriched.loan_id join_key
+member_summary reads fines_clean.amount_due filter
+
+# loan_ranks: windows over a join, each key qualified with the source it
+# belongs to, which is not always the first one
+loan_ranks.loan_id <- loans_enriched.loan_id passthrough
+loan_ranks.member_id <- loans_enriched.member_id passthrough
+loan_ranks.genre_code <- books.genre_code passthrough
+loan_ranks.recency_in_genre <- books.genre_code window
+loan_ranks.recency_in_genre <- loans_enriched.borrowed_at window
+loan_ranks.age_rank_for_member <- loans_enriched.member_id window
+loan_ranks.age_rank_for_member <- books.published_on window
+loan_ranks reads loans_enriched.book_id join_key
+loan_ranks reads books.book_id join_key
+
+# reading_lists: a QUALIFY dedup, an aggregate ordered WITHIN GROUP by a
+# column of the other source
+reading_lists.member_id <- raw.reviews.member_id passthrough
+reading_lists.titles_in_order <- books.title aggregate
+reading_lists.titles_in_order <- raw.reviews.written_at aggregate
+reading_lists.mean_stars <- raw.reviews.stars aggregate
+reading_lists reads raw.reviews.member_id dedup_key
+reading_lists reads raw.reviews.book_id dedup_key
+reading_lists reads raw.reviews.written_at dedup_key
+reading_lists reads raw.reviews.book_id join_key
+reading_lists reads books.book_id join_key
+
+# branch_activity: a UNION ALL of two models, paired by position, literals, a
+# VALUES list joined
+branch_activity.branch_code <- loans_enriched.branch_code passthrough
+branch_activity.branch_code <- members.branch_code passthrough
+branch_activity.branch_name root
+branch_activity.activity root
+branch_activity.happened_at <- loans_enriched.borrowed_at rename
+branch_activity.happened_at <- members.joined_at rename
+branch_activity reads loans_enriched.branch_code join_key
+branch_activity reads members.branch_code join_key
+
+# loan_history: an incremental model reading its own table to filter
+loan_history.loan_id <- loans_enriched.loan_id passthrough
+loan_history.member_id <- loans_enriched.member_id passthrough
+loan_history.loan_state <- loans_enriched.loan_state passthrough
+loan_history.days_out <- loans_enriched.days_out passthrough
+loan_history.borrowed_at <- loans_enriched.borrowed_at passthrough
+loan_history reads loans_enriched.borrowed_at filter
+
+# twin_scopes: two CTEs, each with a WITH of its own naming a CTE alike
+twin_scopes.book_id <- books.book_id passthrough
+twin_scopes.title <- books.title passthrough
+twin_scopes.best_stars <- raw.reviews.stars aggregate
+twin_scopes reads books.genre_code filter
+twin_scopes reads raw.reviews.stars filter
+twin_scopes reads books.book_id join_key
+twin_scopes reads raw.reviews.book_id join_key
