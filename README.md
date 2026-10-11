@@ -7,10 +7,11 @@ right, not what a tool gave.
 ## What is here
 
 [`library/`](library) is a lending library: books, members, loans, fines and
-reviews. It has fifteen models over five sources, in Snowflake's SQL. Each model
+reviews. It has sixteen models over five sources, in Snowflake's SQL. Each model
 is there for one or two shapes, named above its lines in `expected.txt`:
 - a star less some columns, a star replacing one, a star keeping the names a
-  pattern matches, a lateral alias, a `LATERAL FLATTEN`;
+  pattern matches, a lateral alias, an alias named like a column read after
+  it, a `LATERAL FLATTEN`;
 - window keys of the second source of a join, an aggregate ordered `WITHIN
   GROUP`, a `QUALIFY`;
 - a `UNION ALL`, a `VALUES` list, a `PIVOT`;
@@ -41,7 +42,8 @@ compute it, followed back through every CTE, subquery and star: function
 arguments, `CASE` conditions and branches, a window's `PARTITION BY` and `ORDER
 BY` keys, the keys of a `WITHIN GROUP` or of an `ORDER BY` inside a call, the
 input of a `FLATTEN` whose `VALUE` is taken. The branches of a `UNION` pair by
-position. A `PIVOT`'s value columns read the aggregated column and the pivoted
+position. A name in a select list that is both a column of its `FROM` and an
+alias given before it is the column. A `PIVOT`'s value columns read the aggregated column and the pivoted
 one, as the `CASE` each stands for would. A column read only in `WHERE`, `JOIN`, `HAVING` or `QUALIFY` is not
 an input: it is a `reads` line. `GROUP BY` is neither.
 
