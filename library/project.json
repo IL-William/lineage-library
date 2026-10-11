@@ -94,6 +94,24 @@
       "materialized": "view",
       "parents": ["books", "raw.reviews"],
       "columns": ["book_id", "title", "best_stars"]
+    },
+    "book_labels": {
+      "relation": "LAB.SHELF.BOOK_LABELS",
+      "materialized": "view",
+      "parents": ["books"],
+      "columns": ["book_id", "title", "author", "published_on", "genre_code", "isbn13", "tags", "shelf_version", "shelved_at"]
+    },
+    "loan_keys": {
+      "relation": "LAB.SHELF.LOAN_KEYS",
+      "materialized": "view",
+      "parents": ["loans_enriched"],
+      "columns": ["loan_id", "book_id", "member_id"]
+    },
+    "member_branch_loans": {
+      "relation": "LAB.SHELF.MEMBER_BRANCH_LOANS",
+      "materialized": "table",
+      "parents": ["loans_enriched"],
+      "columns": ["member_id", "north_loans", "south_loans", "east_loans"]
     }
   }
 }
