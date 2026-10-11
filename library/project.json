@@ -112,6 +112,12 @@
       "materialized": "table",
       "parents": ["loans_enriched"],
       "columns": ["member_id", "north_loans", "south_loans", "east_loans"]
+    },
+    "catalogue_entries": {
+      "relation": "LAB.SHELF.CATALOGUE_ENTRIES",
+      "materialized": "view",
+      "parents": ["books"],
+      "columns": ["book_id", "title", "bare_title", "title_key"]
     }
   }
 }

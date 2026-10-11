@@ -167,3 +167,12 @@ member_branch_loans.south_loans <- loans_enriched.loan_id aggregate
 member_branch_loans.south_loans <- loans_enriched.branch_code aggregate
 member_branch_loans.east_loans <- loans_enriched.loan_id aggregate
 member_branch_loans.east_loans <- loans_enriched.branch_code aggregate
+
+# catalogue_entries: an alias named like a column of its table, then that name
+# read again, alone and in an expression; the table's column wins over the
+# alias, so both read the title the table has
+catalogue_entries.book_id <- books.book_id passthrough
+catalogue_entries.title <- books.author transform
+catalogue_entries.title <- books.title transform
+catalogue_entries.bare_title <- books.title rename
+catalogue_entries.title_key <- books.title transform
