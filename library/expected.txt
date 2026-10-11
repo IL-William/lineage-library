@@ -140,3 +140,30 @@ twin_scopes reads books.genre_code filter
 twin_scopes reads raw.reviews.stars filter
 twin_scopes reads books.book_id join_key
 twin_scopes reads raw.reviews.book_id join_key
+
+# book_labels: a star replacing one column with an expression of itself
+book_labels.book_id <- books.book_id passthrough
+book_labels.title <- books.title transform
+book_labels.author <- books.author passthrough
+book_labels.published_on <- books.published_on passthrough
+book_labels.genre_code <- books.genre_code passthrough
+book_labels.isbn13 <- books.isbn13 passthrough
+book_labels.tags <- books.tags passthrough
+book_labels.shelf_version <- books.shelf_version passthrough
+book_labels.shelved_at <- books.shelved_at passthrough
+
+# loan_keys: a star keeping the columns whose name matches a pattern
+loan_keys.loan_id <- loans_enriched.loan_id passthrough
+loan_keys.book_id <- loans_enriched.book_id passthrough
+loan_keys.member_id <- loans_enriched.member_id passthrough
+
+# member_branch_loans: a PIVOT; each value column counts the loans of one
+# branch, so it reads the counted column and the pivoted one, as the CASE it
+# stands for would; the column left over groups the rows
+member_branch_loans.member_id <- loans_enriched.member_id passthrough
+member_branch_loans.north_loans <- loans_enriched.loan_id aggregate
+member_branch_loans.north_loans <- loans_enriched.branch_code aggregate
+member_branch_loans.south_loans <- loans_enriched.loan_id aggregate
+member_branch_loans.south_loans <- loans_enriched.branch_code aggregate
+member_branch_loans.east_loans <- loans_enriched.loan_id aggregate
+member_branch_loans.east_loans <- loans_enriched.branch_code aggregate
