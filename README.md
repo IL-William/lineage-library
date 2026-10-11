@@ -79,8 +79,8 @@ and a model reading it is drawn from what it reads.
 - **`check.py` checks that the files agree with each other**: every line names
   a model, a parent and columns the graph has, every column of every model has
   a line, a column is not both a root and fed, and the SQL reads no table but
-  its parents' and its own. It cannot check the lineage
-  itself; that is the reader's job.
+  its parents' and its own. It cannot check the lineage itself; that is the
+  reader's job.
 
 ```
 python3 check.py
