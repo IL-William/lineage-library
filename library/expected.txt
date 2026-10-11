@@ -176,3 +176,73 @@ catalogue_entries.title <- books.author transform
 catalogue_entries.title <- books.title transform
 catalogue_entries.bare_title <- books.title rename
 catalogue_entries.title_key <- books.title transform
+
+# all_loans: a UNION ALL of stars over two tables that have the same columns in
+# another order, and a branch written out against them. Branches pair by
+# position, and a star expands in its table's order: the archive keeps
+# returned_at before due_on, so each feeds the other's column
+all_loans.loan_id <- raw.loans.loan_id passthrough
+all_loans.loan_id <- raw.loans_archive.loan_id passthrough
+all_loans.loan_id <- raw.interlibrary_loans.request_id rename
+all_loans.book_id <- raw.loans.book_id passthrough
+all_loans.book_id <- raw.loans_archive.book_id passthrough
+all_loans.book_id <- raw.interlibrary_loans.title_id rename
+all_loans.member_id <- raw.loans.member_id passthrough
+all_loans.member_id <- raw.loans_archive.member_id passthrough
+all_loans.member_id <- raw.interlibrary_loans.patron_id rename
+all_loans.branch_code <- raw.loans.branch_code passthrough
+all_loans.branch_code <- raw.loans_archive.branch_code passthrough
+all_loans.borrowed_at <- raw.loans.borrowed_at passthrough
+all_loans.borrowed_at <- raw.loans_archive.borrowed_at passthrough
+all_loans.borrowed_at <- raw.interlibrary_loans.requested_at rename
+all_loans.due_on <- raw.loans.due_on passthrough
+all_loans.due_on <- raw.loans_archive.returned_at rename
+all_loans.due_on <- raw.interlibrary_loans.due_back_on rename
+all_loans.returned_at <- raw.loans.returned_at passthrough
+all_loans.returned_at <- raw.loans_archive.due_on rename
+all_loans.returned_at <- raw.interlibrary_loans.received_back_at rename
+all_loans.status <- raw.loans.status passthrough
+all_loans.status <- raw.loans_archive.status passthrough
+all_loans.status <- raw.interlibrary_loans.request_status rename
+
+# loans_unioned: ephemeral, as dbt_utils.union_relations compiles it. Every
+# column is written out and cast by name, a null where a table lacks it, and
+# the table's name is a literal; quoted upper case names are the same columns
+loans_unioned._dbt_source_relation root
+loans_unioned.loan_id <- raw.loans.loan_id cast
+loans_unioned.loan_id <- raw.loans_archive.loan_id cast
+loans_unioned.book_id <- raw.loans.book_id cast
+loans_unioned.book_id <- raw.loans_archive.book_id cast
+loans_unioned.member_id <- raw.loans.member_id cast
+loans_unioned.member_id <- raw.loans_archive.member_id cast
+loans_unioned.branch_code <- raw.loans.branch_code cast
+loans_unioned.branch_code <- raw.loans_archive.branch_code cast
+loans_unioned.borrowed_at <- raw.loans.borrowed_at cast
+loans_unioned.borrowed_at <- raw.loans_archive.borrowed_at cast
+loans_unioned.due_on <- raw.loans.due_on cast
+loans_unioned.due_on <- raw.loans_archive.due_on cast
+loans_unioned.returned_at <- raw.loans.returned_at cast
+loans_unioned.returned_at <- raw.loans_archive.returned_at cast
+loans_unioned.status <- raw.loans.status cast
+loans_unioned.status <- raw.loans_archive.status cast
+loans_unioned.archived_at <- raw.loans_archive.archived_at cast
+
+# loan_ledger: the ephemeral union_relations read through a star
+loan_ledger._dbt_source_relation root
+loan_ledger.loan_id <- raw.loans.loan_id cast
+loan_ledger.loan_id <- raw.loans_archive.loan_id cast
+loan_ledger.book_id <- raw.loans.book_id cast
+loan_ledger.book_id <- raw.loans_archive.book_id cast
+loan_ledger.member_id <- raw.loans.member_id cast
+loan_ledger.member_id <- raw.loans_archive.member_id cast
+loan_ledger.branch_code <- raw.loans.branch_code cast
+loan_ledger.branch_code <- raw.loans_archive.branch_code cast
+loan_ledger.borrowed_at <- raw.loans.borrowed_at cast
+loan_ledger.borrowed_at <- raw.loans_archive.borrowed_at cast
+loan_ledger.due_on <- raw.loans.due_on cast
+loan_ledger.due_on <- raw.loans_archive.due_on cast
+loan_ledger.returned_at <- raw.loans.returned_at cast
+loan_ledger.returned_at <- raw.loans_archive.returned_at cast
+loan_ledger.status <- raw.loans.status cast
+loan_ledger.status <- raw.loans_archive.status cast
+loan_ledger.archived_at <- raw.loans_archive.archived_at cast

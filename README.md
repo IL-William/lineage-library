@@ -7,7 +7,7 @@ right, not what a tool gave.
 ## What is here
 
 [`library/`](library) is a lending library: books, members, loans, fines and
-reviews. It has sixteen models over five sources, in Snowflake's SQL. Each model
+reviews. It has nineteen models over seven sources, in Snowflake's SQL. Each model
 is there for one or two shapes, named above its lines in `expected.txt`:
 - a star less some columns, a star replacing one, a star keeping the names a
   pattern matches, a lateral alias, an alias named like a column read after
@@ -15,13 +15,17 @@ is there for one or two shapes, named above its lines in `expected.txt`:
 - window keys of the second source of a join, an aggregate ordered `WITHIN
   GROUP`, a `QUALIFY`;
 - a `UNION ALL`, a `VALUES` list, a `PIVOT`;
+- a `UNION ALL` of stars over tables whose columns come in another order, and
+  a branch written out against them; `dbt_utils.union_relations` as it
+  compiles, read through a star;
 - an ephemeral model, an incremental model reading its own table;
 - two CTEs naming a CTE of their own alike.
 
 The files:
 - **`project.json`** is the graph: the dialect, each source with its table and
   columns, and each model with its table, materialisation, parents and the
-  columns its table has. An ephemeral model has no table.
+  columns its table has. Columns are listed in their table's order, which is
+  what a star expands to. An ephemeral model has no table.
 - **`models/<name>.sql`** is each model's SQL as dbt compiles it: relations
   fully qualified, and an ephemeral model inlined as `__dbt__cte__<name>`
   where it is read.
@@ -42,8 +46,9 @@ compute it, followed back through every CTE, subquery and star: function
 arguments, `CASE` conditions and branches, a window's `PARTITION BY` and `ORDER
 BY` keys, the keys of a `WITHIN GROUP` or of an `ORDER BY` inside a call, the
 input of a `FLATTEN` whose `VALUE` is taken. The branches of a `UNION` pair by
-position. A name in a select list that is both a column of its `FROM` and an
-alias given before it is the column. A `PIVOT`'s value columns read the aggregated column and the pivoted
+position, a star's columns in its table's order. A name in a select list
+that is both a column of its `FROM` and an alias given before it is the
+column. A `PIVOT`'s value columns read the aggregated column and the pivoted
 one, as the `CASE` each stands for would. A column read only in `WHERE`, `JOIN`, `HAVING` or `QUALIFY` is not
 an input: it is a `reads` line. `GROUP BY` is neither.
 

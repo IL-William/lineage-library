@@ -20,6 +20,14 @@
     "raw.reviews": {
       "relation": "LAB.RAW.REVIEWS",
       "columns": ["review_id", "book_id", "member_id", "stars", "written_at"]
+    },
+    "raw.loans_archive": {
+      "relation": "LAB.RAW.LOANS_ARCHIVE",
+      "columns": ["loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "returned_at", "due_on", "status", "archived_at"]
+    },
+    "raw.interlibrary_loans": {
+      "relation": "LAB.RAW.INTERLIBRARY_LOANS",
+      "columns": ["request_id", "title_id", "patron_id", "requested_at", "due_back_on", "received_back_at", "request_status", "lender"]
     }
   },
   "models": {
@@ -118,6 +126,24 @@
       "materialized": "view",
       "parents": ["books"],
       "columns": ["book_id", "title", "bare_title", "title_key"]
+    },
+    "all_loans": {
+      "relation": "LAB.SHELF.ALL_LOANS",
+      "materialized": "table",
+      "parents": ["raw.loans", "raw.loans_archive", "raw.interlibrary_loans"],
+      "columns": ["loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "due_on", "returned_at", "status"]
+    },
+    "loans_unioned": {
+      "relation": null,
+      "materialized": "ephemeral",
+      "parents": ["raw.loans", "raw.loans_archive"],
+      "columns": ["_dbt_source_relation", "loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "due_on", "returned_at", "status", "archived_at"]
+    },
+    "loan_ledger": {
+      "relation": "LAB.SHELF.LOAN_LEDGER",
+      "materialized": "table",
+      "parents": ["loans_unioned"],
+      "columns": ["_dbt_source_relation", "loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "due_on", "returned_at", "status", "archived_at"]
     }
   }
 }
