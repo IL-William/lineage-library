@@ -144,6 +144,42 @@
       "materialized": "table",
       "parents": ["loans_unioned"],
       "columns": ["_dbt_source_relation", "loan_id", "book_id", "member_id", "branch_code", "borrowed_at", "due_on", "returned_at", "status", "archived_at"]
+    },
+    "book_ratings": {
+      "relation": "LAB.SHELF.BOOK_RATINGS",
+      "materialized": "view",
+      "parents": ["books", "raw.reviews"],
+      "columns": ["book_id", "title", "best_stars", "last_review_at"]
+    },
+    "loan_titles": {
+      "relation": "LAB.SHELF.LOAN_TITLES",
+      "materialized": "table",
+      "parents": ["loans_enriched", "books"],
+      "columns": ["loan_id", "borrowed_at", "title", "genre"]
+    },
+    "shelf_tags": {
+      "relation": "LAB.SHELF.SHELF_TAGS",
+      "materialized": "table",
+      "parents": ["books"],
+      "columns": ["book_id", "tag"]
+    },
+    "tag_rows": {
+      "relation": "LAB.SHELF.TAG_ROWS",
+      "materialized": "table",
+      "parents": ["books"],
+      "columns": ["book_id", "tag", "tag_position"]
+    },
+    "review_documents": {
+      "relation": "LAB.SHELF.REVIEW_DOCUMENTS",
+      "materialized": "view",
+      "parents": ["raw.reviews"],
+      "columns": ["review_id", "review_doc", "review_hash"]
+    },
+    "tag_spellings": {
+      "relation": "LAB.SHELF.TAG_SPELLINGS",
+      "materialized": "view",
+      "parents": ["books"],
+      "columns": ["book_id", "tag_titles", "tags_beyond_genre"]
     }
   }
 }

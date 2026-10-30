@@ -7,11 +7,19 @@ right, not what a tool gave.
 ## What is here
 
 [`library/`](library) is a lending library: books, members, loans, fines and
-reviews. It has nineteen models over seven sources, in Snowflake's SQL. Each model
-is there for one or two shapes, named above its lines in `expected.txt`:
+reviews. It has twenty-five models over seven sources, in Snowflake's SQL.
+Each model is there for one or two shapes, named above its lines in
+`expected.txt`:
 - a star less some columns, a star replacing one, a star keeping the names a
   pattern matches, a lateral alias, an alias named like a column read after
-  it, a `LATERAL FLATTEN`;
+  it, a `LATERAL FLATTEN`, one whose input is qualified with the name of a
+  table left without an alias, and a `FLATTEN` called as
+  `TABLE(FLATTEN(...))`;
+- a star inside a call, `OBJECT_CONSTRUCT(*)` and `HASH(*)`; lambdas, one
+  whose argument is named like a column of its table, one reading a column of
+  its table;
+- scalar subqueries in a select list, one correlated with the outer row; two
+  tables without an alias, their columns qualified with their own names;
 - window keys of the second source of a join, an aggregate ordered `WITHIN
   GROUP`, a `QUALIFY`;
 - a `UNION ALL`, a `VALUES` list, a `PIVOT`;
@@ -36,7 +44,7 @@ The files:
 ```
 model.column <- parent.column kind      an edge
 model.column root                       a column built from no column
-model reads parent.column role          a column read to decide which rows exist
+model reads parent.column role          a column read to choose rows, not values
 ```
 
 A parent is a model's name, or `raw.<table>` for a source. Names are lower case.
@@ -46,11 +54,17 @@ compute it, followed back through every CTE, subquery and star: function
 arguments, `CASE` conditions and branches, a window's `PARTITION BY` and `ORDER
 BY` keys, the keys of a `WITHIN GROUP` or of an `ORDER BY` inside a call, the
 input of a `FLATTEN` whose `VALUE` is taken. The branches of a `UNION` pair by
-position, a star's columns in its table's order. A name in a select list
-that is both a column of its `FROM` and an alias given before it is the
-column. A `PIVOT`'s value columns read the aggregated column and the pivoted
-one, as the `CASE` each stands for would. A column read only in `WHERE`, `JOIN`, `HAVING` or `QUALIFY` is not
-an input: it is a `reads` line. `GROUP BY` is neither.
+position, a star's columns in its table's order. A name in a select list that
+is both a column of its `FROM` and an alias given before it is the column. A
+`PIVOT`'s value columns read the aggregated column and the pivoted one, as the
+`CASE` each stands for would. A star inside a call other than `count(*)`, such
+as `OBJECT_CONSTRUCT(*)` or `HASH(*)`, reads every column of its `FROM`. The
+argument of a lambda in `TRANSFORM` or `FILTER` is an element of its array,
+resolved before a column of the same name; a column read inside a lambda is an
+input. The columns a scalar subquery selects are inputs of the column it
+computes, and its `WHERE`, correlation included, gives `filter` reads. A
+column read only in `WHERE`, `JOIN`, `HAVING` or `QUALIFY` is not an input: it
+is a `reads` line. `GROUP BY` is neither.
 
 **The kind** says what the output is of the input. Of the expressions met on
 the way back, the loudest stands, from the quietest:

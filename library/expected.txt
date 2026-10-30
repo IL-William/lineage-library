@@ -246,3 +246,54 @@ loan_ledger.returned_at <- raw.loans_archive.returned_at cast
 loan_ledger.status <- raw.loans.status cast
 loan_ledger.status <- raw.loans_archive.status cast
 loan_ledger.archived_at <- raw.loans_archive.archived_at cast
+
+# book_ratings: scalar subqueries in a select list, one correlated with the
+# outer row and one not; the correlation is read in the subquery's WHERE, so
+# both its sides are filters, and neither is an input of the column
+book_ratings.book_id <- books.book_id passthrough
+book_ratings.title <- books.title passthrough
+book_ratings.best_stars <- raw.reviews.stars aggregate
+book_ratings.last_review_at <- raw.reviews.written_at aggregate
+book_ratings reads raw.reviews.book_id filter
+book_ratings reads books.book_id filter
+
+# loan_titles: two tables without an alias, their columns qualified with the
+# table's own name, over a join and a filter
+loan_titles.loan_id <- loans_enriched.loan_id passthrough
+loan_titles.borrowed_at <- loans_enriched.borrowed_at passthrough
+loan_titles.title <- books.title passthrough
+loan_titles.genre <- books.genre_code transform
+loan_titles reads loans_enriched.book_id join_key
+loan_titles reads books.book_id join_key
+loan_titles reads books.published_on filter
+
+# shelf_tags: a LATERAL FLATTEN whose input is qualified with the name of a
+# table left without an alias
+shelf_tags.book_id <- books.book_id passthrough
+shelf_tags.tag <- books.tags transform
+
+# tag_rows: a FLATTEN called as TABLE(FLATTEN(...)), read as the LATERAL one
+tag_rows.book_id <- books.book_id passthrough
+tag_rows.tag <- books.tags transform
+tag_rows.tag_position root
+
+# review_documents: a star inside a call reads every column of its FROM
+review_documents.review_id <- raw.reviews.review_id passthrough
+review_documents.review_doc <- raw.reviews.review_id transform
+review_documents.review_doc <- raw.reviews.book_id transform
+review_documents.review_doc <- raw.reviews.member_id transform
+review_documents.review_doc <- raw.reviews.stars transform
+review_documents.review_doc <- raw.reviews.written_at transform
+review_documents.review_hash <- raw.reviews.review_id hash
+review_documents.review_hash <- raw.reviews.book_id hash
+review_documents.review_hash <- raw.reviews.member_id hash
+review_documents.review_hash <- raw.reviews.stars hash
+review_documents.review_hash <- raw.reviews.written_at hash
+
+# tag_spellings: lambdas. Snowflake resolves a lambda's argument before a
+# column, so title is a tag here and not the book's title; a column of the
+# table read inside a lambda is an input
+tag_spellings.book_id <- books.book_id passthrough
+tag_spellings.tag_titles <- books.tags transform
+tag_spellings.tags_beyond_genre <- books.tags transform
+tag_spellings.tags_beyond_genre <- books.genre_code transform
